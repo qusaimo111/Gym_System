@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gym-app-v4';
+const CACHE_NAME = 'gym-app-v5';
 const assetsToCache = [
   './',
   './index.html',
