@@ -3,6 +3,7 @@ const assetsToCache = [
   './',
   './index.html',
   './app.js',
+  './style.css',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://unpkg.com/html5-qrcode'
 ];
