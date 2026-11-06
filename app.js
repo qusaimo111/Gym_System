@@ -3,15 +3,11 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxWgo_JgJrdsWYwkLY3hCSs
 
 let playersData = [];
 
-// التنقل بين الأقسام
 // التنقل بين الأقسام وتلوين الزر النشط
 function showSection(sectionId, btnElement) {
-    // إخفاء جميع الأقسام
     document.querySelectorAll('.section').forEach(sec => sec.style.display = 'none');
-    // إظهار القسم المطلوب
     document.getElementById(sectionId).style.display = 'block';
     
-    // إذا تم تمرير الزر، قم بتحديث الألوان
     if(btnElement) {
         document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active-tab'));
         btnElement.classList.add('active-tab');
@@ -21,34 +17,41 @@ function showSection(sectionId, btnElement) {
     else stopScanner();
 }
 
-// 1. جلب البيانات من جوجل شيت
+// 1. جلب البيانات من جوجل شيت (مع دعم القراءة المحلية عند انقطاع النت)
 async function loadPlayers() {
     try {
         document.getElementById('playersList').innerHTML = 'جاري التحميل...';
         let response = await fetch(API_URL);
         playersData = await response.json();
+        localStorage.setItem('cachedPlayers', JSON.stringify(playersData));
         renderPlayers(playersData);
     } catch (error) {
-        document.getElementById('playersList').innerHTML = 'حدث خطأ في الاتصال';
+        let cached = localStorage.getItem('cachedPlayers');
+        if (cached) {
+            playersData = JSON.parse(cached);
+            renderPlayers(playersData);
+            console.warn('تم تحميل البيانات من النسخة المحلية بسبب انقطاع الإنترنت.');
+        } else {
+            document.getElementById('playersList').innerHTML = 'تعذر الاتصال ولا توجد بيانات مخزنة مسبقاً.';
+        }
     }
+    checkPendingSync();
 }
 
-// 2. تسجيل لاعب جديد
+// 2. تسجيل لاعب جديد (مع دعم وضع الـ Offline)
 document.getElementById('addForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
-    btn.innerText = 'جاري الحفظ...';
-    btn.disabled = true;
-
+    
     let joinDate = new Date();
     let expiryDate = new Date();
     let plan = document.getElementById('planType').value;
 
     if (plan === 'شهري') expiryDate.setDate(joinDate.getDate() + 30);
     else if (plan === 'أسبوعي') expiryDate.setDate(joinDate.getDate() + 7);
-    else expiryDate.setHours(23, 59, 59, 999); // لنهاية اليوم
+    else expiryDate.setHours(23, 59, 59, 999);
 
-    let newId = 'GYM-' + Date.now(); // توليد ID فريد للاعب
+    let newId = 'GYM-' + Date.now();
 
     let data = {
         id: newId,
@@ -59,21 +62,84 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
         expiryDate: expiryDate.toISOString()
     };
 
-    // إرسال البيانات لجوجل
-    await fetch(API_URL, {
-        method: 'POST',
-        body: JSON.stringify(data)
-    });
-
-    // توليد الـ QR Code
+    // توليد الـ QR Code فوراً 
     document.getElementById('qrcodeBox').innerHTML = '';
     new QRCode(document.getElementById('qrcodeBox'), { text: newId, width: 200, height: 200 });
 
-    btn.innerText = 'حفظ وتوليد الكود';
-    btn.disabled = false;
+    if (navigator.onLine) {
+        btn.innerText = 'جاري الحفظ...';
+        btn.disabled = true;
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            loadPlayers();
+        } catch (err) {
+            console.error('فشل الإرسال، سيتم الحفظ محلياً:', err);
+            saveOfflinePlayer(data);
+        }
+        btn.innerText = 'حفظ وتوليد الكود';
+        btn.disabled = false;
+    } else {
+        saveOfflinePlayer(data);
+        alert('⚠️ الإنترنت مقطوع! تم توليد الكود وحفظ البيانات محلياً. يرجى الضغط على زر المزامنة عند عودة الاتصال.');
+    }
+
     this.reset();
-    loadPlayers(); // تحديث القائمة
 });
+
+// حفظ اللاعب محلياً وإظهار زر المزامنة
+function saveOfflinePlayer(data) {
+    let offlineQueue = JSON.parse(localStorage.getItem('offlinePlayers')) || [];
+    offlineQueue.push(data);
+    localStorage.setItem('offlinePlayers', JSON.stringify(offlineQueue));
+    
+    playersData.push(data);
+    renderPlayers(playersData);
+    checkPendingSync();
+}
+
+// التحقق من وجود بيانات معلقة
+function checkPendingSync() {
+    let offlineQueue = JSON.parse(localStorage.getItem('offlinePlayers')) || [];
+    let syncBtn = document.getElementById('syncBtn');
+    
+    if (syncBtn) {
+        if (offlineQueue.length > 0) {
+            syncBtn.style.display = 'block';
+            syncBtn.innerText = `🔄 مزامنة البيانات المعلقة (${offlineQueue.length})`;
+        } else {
+            syncBtn.style.display = 'none';
+        }
+    }
+}
+
+// دالة زر المزامنة 
+async function syncOfflineData() {
+    let offlineQueue = JSON.parse(localStorage.getItem('offlinePlayers')) || [];
+    if (offlineQueue.length === 0) return;
+
+    const syncBtn = document.getElementById('syncBtn');
+    syncBtn.innerText = 'جاري المزامنة...';
+    syncBtn.disabled = true;
+
+    try {
+        for (let player of offlineQueue) {
+            await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(player)
+            });
+        }
+        localStorage.removeItem('offlinePlayers');
+        alert('✨ تمت المزامنة بنجاح! جميع البيانات أصبحت في Google Sheets.');
+        loadPlayers();
+    } catch (error) {
+        alert('❌ فشلت المزامنة، تأكد من اتصال الإنترنت وحاول مرة أخرى.');
+        syncBtn.disabled = false;
+        checkPendingSync();
+    }
+}
 
 // 3. عرض اللاعبين والبحث
 function renderPlayers(data) {
@@ -119,7 +185,6 @@ function stopScanner() {
 }
 
 function onScanSuccess(decodedText) {
-    // إيقاف المسح مؤقتاً لتجنب التكرار
     stopScanner(); 
     let player = playersData.find(p => p.id === decodedText);
     let container = document.getElementById('mainContainer');
@@ -134,12 +199,11 @@ function onScanSuccess(decodedText) {
             resultBox.innerText = `❌ اشتراك منتهي!\nاللاعب: ${player.name}`;
             container.className = 'container screen-red';
         } else {
-            resultBox.innerText = `✅ اشتراك فعال\nاللاعب: ${player.name}\nنوع الاشتراك: ${player.plan}`;
+            resultBox.innerText = `✅ اشتراك فعال\nاللاعب: ${player.name}\nالنوع: ${player.plan}`;
             container.className = 'container screen-green';
         }
     }
 
-    // إعادة الشاشة لوضعها الطبيعي وتشغيل الكاميرا بعد 3 ثواني
     setTimeout(() => {
         container.className = 'container';
         resultBox.innerText = 'امسح كود اللاعب';
@@ -147,5 +211,4 @@ function onScanSuccess(decodedText) {
     }, 3000);
 }
 
-// تشغيل جلب البيانات عند فتح التطبيق
 window.onload = loadPlayers;
