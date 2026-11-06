@@ -1,9 +1,12 @@
-const CACHE_NAME = 'gym-app-v7';
+const CACHE_NAME = 'gym-app-v9';
 const assetsToCache = [
   './',
   './index.html',
   './app.js',
   './style.css',
+  './manifest.json',
+  './icon-192.png', // الصورة الأولى
+  './icon-512.png', // الصورة الثانية
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://unpkg.com/html5-qrcode'
 ];
