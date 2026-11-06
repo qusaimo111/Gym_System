@@ -43,8 +43,11 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     
-    let joinDate = new Date();
-    let expiryDate = new Date();
+    // سحب التاريخ من الحقل الجديد بدلاً من تاريخ اليوم التلقائي
+    let dateValue = document.getElementById('joinDateInput').value;
+    let joinDate = new Date(dateValue);
+    let expiryDate = new Date(joinDate); // أخذ نسخة من تاريخ البداية
+    
     let plan = document.getElementById('planType').value;
 
     if (plan === 'شهري') expiryDate.setDate(joinDate.getDate() + 30);
@@ -212,3 +215,4 @@ function onScanSuccess(decodedText) {
 }
 
 window.onload = loadPlayers;
+document.getElementById('joinDateInput').value = new Date().toISOString().split('T')[0];
