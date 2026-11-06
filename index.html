@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة النادي</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- مكتبة توليد الباركود ومكتبة قراءة الباركود -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+    <div class="container" id="mainContainer">
+        <h1>نظام دخول النادي</h1>
+        
+        <!-- أزرار التنقل -->
+        <!-- أزرار التنقل -->
+<div class="tabs">
+    <button onclick="showSection('scanSection', this)" class="active-tab">مسح الباركود</button>
+    <button onclick="showSection('addSection', this)">تسجيل لاعب</button>
+    <button onclick="showSection('listSection', this)">اللاعبين</button>
+</div>
+        <!-- قسم مسح الباركود (الكاميرا) -->
+        <div id="scanSection" class="section">
+            <div id="reader"></div>
+            <div id="scanResult" class="result-box">امسح كود اللاعب</div>
+        </div>
+
+        <!-- قسم تسجيل لاعب جديد -->
+        <div id="addSection" class="section" style="display:none;">
+            <form id="addForm">
+                <input type="text" id="playerName" placeholder="اسم اللاعب" required>
+                <input type="number" id="paymentAmount" placeholder="المبلغ (ل.س)" required>
+                <select id="planType">
+                    <option value="شهري">اشتراك شهري (30 يوم)</option>
+                    <option value="أسبوعي">اشتراك أسبوعي (7 أيام)</option>
+                    <option value="يومي">دخول يومي (تمرين واحد)</option>
+                </select>
+                <button type="submit" id="submitBtn">حفظ وتوليد الكود</button>
+            </form>
+            <div id="qrcodeBox" style="margin-top: 20px; display: flex; justify-content: center;"></div>
+        </div>
+
+        <!-- قسم قائمة اللاعبين والبحث -->
+        <div id="listSection" class="section" style="display:none;">
+            <button onclick="loadPlayers()" style="margin-bottom:10px;">تحديث البيانات 🔄</button>
+            <input type="text" id="searchInput" placeholder="ابحث عن اسم..." onkeyup="filterPlayers()">
+            <div id="playersList">جاري تحميل البيانات...</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
