@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
 
    <link rel="stylesheet" href="style.css">
+    <style> .section { display: none; } </style>
 </head>
 <body>
 
@@ -25,12 +26,14 @@
         <div id="addSection" class="section" style="display: block;">
             <form id="addForm">
                 <input type="text" id="playerName" placeholder="اسم اللاعب" required>
-                <input type="number" id="paymentAmount" placeholder="المبلغ المدفوع" required>
+                 <input type="number" id="paymentAmount" placeholder="المبلغ المدفوع" required>
+                 <input type="date" id="joinDateInput" required> <!-- هذا هو الحقل الجديد -->
                 <select id="planType">
                     <option value="شهري">شهري</option>
                     <option value="أسبوعي">أسبوعي</option>
                     <option value="يومي">يومي</option>
                 </select>
+                
                 <button type="submit" id="submitBtn" class="btn-submit">حفظ وتوليد الكود</button>
             </form>
             <div id="qrcodeBox"></div>
