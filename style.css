@@ -1,7 +1,6 @@
 body {
     font-family: system-ui, -apple-system, sans-serif;
     background-color: #111111;
-    /* خلفية رياضية مع طبقة تعتيم سوداء لضمان وضوح التطبيق */
     background-image: linear-gradient(rgba(17, 17, 17, 0.85), rgba(17, 17, 17, 0.95)), url('https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1920&auto=format&fit=crop');
     background-size: cover;
     background-position: center;
@@ -14,31 +13,32 @@ body {
 .container {
     max-width: 500px;
     margin: auto;
-    background: #1e1e1e; /* رمادي غامق جداً للحاوية */
+    background: #1e1e1e; 
     padding: 15px;
     border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.15); /* توهج أحمر خفيف */
+    box-shadow: 0 4px 15px rgba(255, 0, 0, 0.15); 
     border: 1px solid #333;
     transition: background-color 0.3s;
 }
 h1 { 
     text-align: center; 
-    color: #ff0000; /* أحمر فاقع */
+    color: #ff0000; 
     font-size: 24px; 
     text-transform: uppercase; 
     letter-spacing: 1px;
 }
-.tabs { display: flex; justify-content: space-between; margin-bottom: 20px; }
+.tabs { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 4px; }
 .tabs button {
-    flex: 1; margin: 0 2px; padding: 10px; 
+    flex: 1; padding: 10px 5px; 
     background: #333333; color: #cccccc;
     border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
+    font-size: 13px; /* تصغير الخط قليلاً ليتسع للأزرار الأربعة */
     transition: 0.3s;
 }
 .tabs button.active-tab { 
     background: #ff0000; 
     color: white; 
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5); /* توهج للزر الفعال */
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.5); 
 }
 .tabs button:hover:not(.active-tab) { background: #444444; }
 input, select, button {
@@ -68,12 +68,11 @@ button[type="submit"]:hover {
     justify-content: space-between; align-items: center; background: #252525;
     margin-top: 5px; border-radius: 5px; font-size: 14px;
 }
-.status-active { color: #00ffcc; font-weight: bold; } /* أخضر نيون متوهج للفعال عشان يبرز عالأسود */
+.status-active { color: #00ffcc; font-weight: bold; } 
 .status-expired { color: #ff3333; font-weight: bold; }
 .result-box {
     text-align: center; padding: 20px; margin-top: 15px;
     font-size: 18px; font-weight: bold; border-radius: 8px; background: #111; border: 1px solid #444;
 }
-/* ألوان شاشة الكاميرا للقبول والرفض */
 .screen-green { background-color: #004d1a !important; border: 2px solid #00ff00; }
 .screen-red { background-color: #4d0000 !important; border: 2px solid #ff0000; }
