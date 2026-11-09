@@ -15,22 +15,24 @@ function showSection(sectionId, btnElement) {
     else stopScanner();
 }
 
-// 1. جلب البيانات ودمج التكرارات (Deduplication)
+// 1. جلب البيانات ودمج التكرارات بأمان
 async function loadPlayers() {
     try {
         document.getElementById('playersList').innerHTML = 'جاري التحميل...';
         let response = await fetch(API_URL);
         let rawData = await response.json();
         
-        // دمج البيانات: إذا كان اللاعب موجود أكثر من مرة، نأخذ الصف صاحب أحدث تاريخ انتهاء
         let mergedPlayers = {};
         rawData.forEach(p => {
-            if (!mergedPlayers[p.phone]) {
-                mergedPlayers[p.phone] = p;
+            // استخدام الـ ID كمعرف إذا كان رقم الموبايل غير موجود في جوجل شيت
+            let uniqueKey = p.phone || p.id; 
+            
+            if (!mergedPlayers[uniqueKey]) {
+                mergedPlayers[uniqueKey] = p;
             } else {
-                let currentExpiry = new Date(mergedPlayers[p.phone].expiryDate);
+                let currentExpiry = new Date(mergedPlayers[uniqueKey].expiryDate);
                 let newExpiry = new Date(p.expiryDate);
-                if (newExpiry > currentExpiry) mergedPlayers[p.phone] = p;
+                if (newExpiry > currentExpiry) mergedPlayers[uniqueKey] = p;
             }
         });
         
@@ -49,14 +51,13 @@ async function loadPlayers() {
     checkPendingSync();
 }
 
-// 2. تسجيل لاعب جديد
+// 2. تسجيل لاعب جديد (تحديث فوري)
 document.getElementById('addForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     let phone = document.getElementById('playerPhone').value;
     
-    // منع تسجيل نفس الرقم مرة أخرى
-    if(playersData.find(p => p.phone === phone)) {
-        alert('هذا الرقم مسجل مسبقاً! يرجى الذهاب لواجهة "تجديد اشتراك" لتجديد حسابه.');
+    if(playersData.find(p => p.phone === phone && p.phone !== undefined)) {
+        alert('هذا الرقم مسجل مسبقاً! يرجى الذهاب لواجهة "تجديد اشتراك".');
         return;
     }
 
@@ -68,10 +69,9 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
 
     if (plan === 'شهري') expiryDate.setDate(joinDate.getDate() + 30);
     else if (plan === 'أسبوعي') expiryDate.setDate(joinDate.getDate() + 7);
-    expiryDate.setHours(23, 59, 59, 999); // لنهاية اليوم
+    expiryDate.setHours(23, 59, 59, 999);
 
     let newId = 'GYM-' + Date.now();
-
     let data = {
         id: newId,
         name: document.getElementById('playerName').value,
@@ -85,11 +85,16 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     document.getElementById('qrcodeBox').innerHTML = '';
     new QRCode(document.getElementById('qrcodeBox'), { text: newId, width: 200, height: 200 });
 
+    // 🌟 إضافة اللاعب محلياً فوراً ليتمكن من مسح الـ QR بثانية واحدة
+    playersData.push(data);
+    localStorage.setItem('cachedPlayers', JSON.stringify(playersData));
+    renderPlayers(playersData);
+
     if (navigator.onLine) {
         btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
         try {
             await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
-            loadPlayers();
+            // لا حاجة لاستدعاء loadPlayers() هنا لأننا قمنا بتحديث الواجهة فوراً
         } catch (err) { saveOfflinePlayer(data); }
         btn.innerText = 'حفظ وتوليد الكود'; btn.disabled = false;
     } else {
@@ -99,7 +104,7 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     this.reset();
 });
 
-// 3. نظام تجديد الاشتراك (الجديد)
+// 3. نظام تجديد الاشتراك (تحديث فوري)
 function searchPlayerForRenew() {
     let phone = document.getElementById('searchPhoneRenew').value;
     let player = playersData.find(p => p.phone === phone);
@@ -125,7 +130,6 @@ document.getElementById('renewForm').addEventListener('submit', async function(e
     let amount = document.getElementById('renewPaymentAmount').value;
     let btn = document.getElementById('renewBtn');
 
-    // حساب التاريخ الجديد بناءً على تاريخ اليوم أو تاريخ الانتهاء (أيهما أبعد)
     let now = new Date();
     let currentExpiry = new Date(player.expiryDate);
     let startDate = currentExpiry > now ? currentExpiry : now;
@@ -136,7 +140,7 @@ document.getElementById('renewForm').addEventListener('submit', async function(e
     newExpiry.setHours(23, 59, 59, 999);
 
     let data = {
-        id: player.id, // نحافظ على نفس الـ ID القديم لكي يظل الـ QR صالحاً
+        id: player.id,
         name: player.name,
         phone: player.phone,
         amount: amount,
@@ -145,12 +149,19 @@ document.getElementById('renewForm').addEventListener('submit', async function(e
         expiryDate: newExpiry.toISOString()
     };
 
+    // 🌟 تحديث اللاعب محلياً فوراً
+    let index = playersData.findIndex(x => x.id === player.id);
+    if(index !== -1) {
+        playersData[index] = data;
+        localStorage.setItem('cachedPlayers', JSON.stringify(playersData));
+        renderPlayers(playersData);
+    }
+
     if (navigator.onLine) {
         btn.innerText = 'جاري التجديد...'; btn.disabled = true;
         try {
             await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
-            alert('تم التجديد بنجاح! يمكن للاعب استخدام نفس الكود الخاص به.');
-            loadPlayers();
+            alert('تم التجديد بنجاح! الكود القديم يعمل الآن بالصلاحية الجديدة.');
         } catch (err) { saveOfflinePlayer(data); }
         btn.innerText = 'تأكيد التجديد'; btn.disabled = false;
         document.getElementById('renewFormContainer').style.display = 'none';
@@ -161,13 +172,11 @@ document.getElementById('renewForm').addEventListener('submit', async function(e
     this.reset();
 });
 
-// وظائف الأوفلاين
+// وظائف الأوفلاين والمزامنة
 function saveOfflinePlayer(data) {
     let offlineQueue = JSON.parse(localStorage.getItem('offlinePlayers')) || [];
     offlineQueue.push(data);
     localStorage.setItem('offlinePlayers', JSON.stringify(offlineQueue));
-    playersData.push(data);
-    renderPlayers(playersData);
     checkPendingSync();
 }
 
@@ -204,14 +213,15 @@ async function syncOfflineData() {
 function renderPlayers(data) {
     let html = '';
     let now = new Date();
-    data.forEach(p => {
+    // عكس المصفوفة لعرض الأحدث أولاً
+    data.slice().reverse().forEach(p => {
         let expiry = new Date(p.expiryDate);
-        expiry.setHours(23, 59, 59, 999); // تصحيح المقارنة
+        expiry.setHours(23, 59, 59, 999);
         let isExpired = expiry < now;
         html += `
             <div class="player-card">
                 <div>
-                    <strong>${p.name}</strong> (${p.phone})<br>
+                    <strong>${p.name}</strong> (${p.phone || 'بدون رقم'})<br>
                     <small>ينتهي: ${expiry.toLocaleDateString('ar-SY')}</small>
                 </div>
                 <div class="${isExpired ? 'status-expired' : 'status-active'}">
@@ -228,7 +238,7 @@ function filterPlayers() {
     renderPlayers(filtered);
 }
 
-// 5. قارئ الباركود (تصليح خطأ التواريخ)
+// 5. قارئ الباركود
 let html5QrcodeScanner = null;
 
 function startScanner() {
@@ -256,7 +266,7 @@ function onScanSuccess(decodedText) {
         container.className = 'container screen-red';
     } else {
         let expiry = new Date(player.expiryDate);
-        expiry.setHours(23, 59, 59, 999); // إعطاء مهلة لنهاية اليوم
+        expiry.setHours(23, 59, 59, 999);
         
         if (expiry < new Date()) {
             resultBox.innerText = `❌ اشتراك منتهي!\nاللاعب: ${player.name}\nانتهى في: ${expiry.toLocaleDateString('ar-SY')}`;
