@@ -5,67 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>إدارة النادي</title>
     <link rel="manifest" href="manifest.json">
-    <!-- مكتبات توليد وقراءة الـ QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-
-   <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css">
     <style> .section { display: none; } </style>
 </head>
 <body>
 
     <div id="mainContainer" class="container">
         <img src="icon-192.png" alt="شعار النادي" style="width: 150px; display: block; margin: 0 auto 20px;">
+        
         <!-- أزرار التنقل -->
         <div class="tabs">
-            <button class="active-tab" onclick="showSection('addSection', this)">تسجيل لاعب</button>
+            <button class="active-tab" onclick="showSection('addSection', this)">تسجيل جديد</button>
+            <button onclick="showSection('renewSection', this)">تجديد اشتراك</button>
             <button onclick="showSection('playersSection', this)">المشتركين</button>
             <button onclick="showSection('scanSection', this)">فحص QR</button>
         </div>
 
-        <!-- قسم تسجيل لاعب جديد -->
+        <!-- 1. قسم تسجيل لاعب جديد -->
         <div id="addSection" class="section" style="display: block;">
             <form id="addForm">
                 <input type="text" id="playerName" placeholder="اسم اللاعب" required>
-                 <input type="number" id="paymentAmount" placeholder="المبلغ المدفوع" required>
-                 <input type="date" id="joinDateInput" required> <!-- هذا هو الحقل الجديد -->
+                <input type="tel" id="playerPhone" placeholder="رقم الموبايل (مهم للبحث والتجديد)" required>
+                <input type="number" id="paymentAmount" placeholder="المبلغ المدفوع" required>
+                <input type="date" id="joinDateInput" required>
                 <select id="planType">
                     <option value="شهري">شهري</option>
                     <option value="أسبوعي">أسبوعي</option>
                     <option value="يومي">يومي</option>
                 </select>
-                
                 <button type="submit" id="submitBtn" class="btn-submit">حفظ وتوليد الكود</button>
             </form>
-            <div id="qrcodeBox"></div>
+            <div id="qrcodeBox" style="margin-top: 15px; text-align: center;"></div>
         </div>
 
-        <!-- قسم قائمة المشتركين -->
-        <div id="playersSection" class="section">
-            <!-- زر المزامنة (مخفي افتراضياً) -->
-            <button id="syncBtn" onclick="syncOfflineData()" style="display: none; background-color: var(--danger); color: white; font-weight: bold;"></button>
+        <!-- 2. قسم تجديد الاشتراك (الجديد كلياً) -->
+        <div id="renewSection" class="section">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="tel" id="searchPhoneRenew" placeholder="أدخل رقم موبايل اللاعب..." style="flex: 3; margin: 0;">
+                <button type="button" onclick="searchPlayerForRenew()" style="flex: 1; margin: 0; background: #555;">بحث</button>
+            </div>
             
+            <div id="renewFormContainer" style="display: none; background: #252525; padding: 15px; border-radius: 8px;">
+                <h3 id="renewPlayerName" style="text-align: center; color: #00ffcc; margin-top: 0;"></h3>
+                <p style="text-align: center; margin-bottom: 15px;">تاريخ الانتهاء الحالي: <strong id="renewCurrentExpiry"></strong></p>
+                
+                <form id="renewForm">
+                    <input type="hidden" id="renewPlayerId">
+                    <input type="number" id="renewPaymentAmount" placeholder="المبلغ المدفوع للتجديد" required>
+                    <select id="renewPlanType">
+                        <option value="شهري">شهري</option>
+                        <option value="أسبوعي">أسبوعي</option>
+                        <option value="يومي">يومي</option>
+                    </select>
+                    <button type="submit" id="renewBtn" class="btn-submit" style="background: #00ffcc; color: #111;">تأكيد التجديد</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. قسم قائمة المشتركين -->
+        <div id="playersSection" class="section">
+            <button id="syncBtn" onclick="syncOfflineData()" style="display: none; background-color: #ff3333; color: white; font-weight: bold;"></button>
             <input type="text" id="searchInput" placeholder="ابحث عن اسم اللاعب..." onkeyup="filterPlayers()">
             <div id="playersList">جاري التحميل...</div>
         </div>
 
-        <!-- قسم قارئ الباركود -->
+        <!-- 4. قسم قارئ الباركود -->
         <div id="scanSection" class="section">
             <div id="reader"></div>
             <div id="scanResult">امسح كود اللاعب</div>
         </div>
     </div>
 
-    <!-- ربط ملف الجافاسكريبت الرئيسي -->
     <script src="app.js"></script>
-
-    <!-- تسجيل Service Worker ليعمل التطبيق بدون إنترنت -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker Registered!', reg))
-                    .catch(err => console.error('Service Worker Registration Failed!', err));
+                navigator.serviceWorker.register('./sw.js');
             });
         }
     </script>
