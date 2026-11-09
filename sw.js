@@ -1,17 +1,16 @@
-const CACHE_NAME = 'gym-app-v9';
+const CACHE_NAME = 'gym-app-v10';
 const assetsToCache = [
   './',
   './index.html',
   './app.js',
   './style.css',
   './manifest.json',
-  './icon-192.png', // الصورة الأولى
-  './icon-512.png', // الصورة الثانية
+  './icon-192.png',
+  './icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://unpkg.com/html5-qrcode'
 ];
 
-// 1. التثبيت وحفظ الملفات
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -21,7 +20,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. تفعيل وتنظيف النسخ القديمة
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -37,16 +35,13 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// 3. الاعتراض وتوفير الملفات من الكاش عند غياب الإنترنت
 self.addEventListener('fetch', (event) => {
-  // لا نتدخل بطلبات الـ API الخاصة بجوجل شيت لكي لا نتعارض مع جلب البيانات
   if (event.request.url.includes('script.google.com')) return;
 
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
     }).catch(() => {
-        // في حال فشل كل شيء وانقطع الإنترنت
         return caches.match('./index.html');
     })
   );
