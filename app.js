@@ -24,7 +24,6 @@ async function loadPlayers() {
         
         let mergedPlayers = {};
         rawData.forEach(p => {
-            // استخدام الـ ID كمعرف إذا كان رقم الموبايل غير موجود في جوجل شيت
             let uniqueKey = p.phone || p.id; 
             
             if (!mergedPlayers[uniqueKey]) {
@@ -51,12 +50,14 @@ async function loadPlayers() {
     checkPendingSync();
 }
 
-// 2. تسجيل لاعب جديد (تحديث فوري)
+// 2. تسجيل لاعب جديد (تحديث فوري مع QR مخصص للسكرين شوت)
 document.getElementById('addForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    let phone = document.getElementById('playerPhone').value;
+    // استخدام trim() لإزالة أي فراغات بالغلط
+    let phone = document.getElementById('playerPhone').value.trim();
     
-    if(playersData.find(p => p.phone === phone && p.phone !== undefined)) {
+    // فحص إذا الرقم موجود مسبقاً
+    if(playersData.find(p => p.phone && String(p.phone).trim() === phone)) {
         alert('هذا الرقم مسجل مسبقاً! يرجى الذهاب لواجهة "تجديد اشتراك".');
         return;
     }
@@ -82,10 +83,18 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
         expiryDate: expiryDate.toISOString()
     };
 
-    document.getElementById('qrcodeBox').innerHTML = '';
-    new QRCode(document.getElementById('qrcodeBox'), { text: newId, width: 200, height: 200 });
+    // توليد الـ QR مع منطقة أمان (حواف بيضاء عريضة جداً) لتسهيل قراءة السكرين شوت
+    let qrBox = document.getElementById('qrcodeBox');
+    qrBox.innerHTML = '';
+    qrBox.style.backgroundColor = '#ffffff'; 
+    qrBox.style.padding = '50px'; // مساحة بيضاء ضخمة حول الكود
+    qrBox.style.borderRadius = '10px';
+    qrBox.style.display = 'inline-block';
+    qrBox.style.marginTop = '20px';
+    
+    new QRCode(qrBox, { text: newId, width: 220, height: 220 });
 
-    // 🌟 إضافة اللاعب محلياً فوراً ليتمكن من مسح الـ QR بثانية واحدة
+    // إضافة اللاعب محلياً فوراً ليتمكن من مسح الـ QR بثانية واحدة
     playersData.push(data);
     localStorage.setItem('cachedPlayers', JSON.stringify(playersData));
     renderPlayers(playersData);
@@ -94,7 +103,6 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
         btn.innerText = 'جاري الحفظ...'; btn.disabled = true;
         try {
             await fetch(API_URL, { method: 'POST', body: JSON.stringify(data) });
-            // لا حاجة لاستدعاء loadPlayers() هنا لأننا قمنا بتحديث الواجهة فوراً
         } catch (err) { saveOfflinePlayer(data); }
         btn.innerText = 'حفظ وتوليد الكود'; btn.disabled = false;
     } else {
@@ -104,10 +112,13 @@ document.getElementById('addForm').addEventListener('submit', async function(e) 
     this.reset();
 });
 
-// 3. نظام تجديد الاشتراك (تحديث فوري)
+// 3. نظام تجديد الاشتراك (تحديث فوري وبحث آمن)
 function searchPlayerForRenew() {
-    let phone = document.getElementById('searchPhoneRenew').value;
-    let player = playersData.find(p => p.phone === phone);
+    // نستخدم trim() للتأكد من عدم وجود مسافات
+    let phone = document.getElementById('searchPhoneRenew').value.trim();
+    
+    // تحويل رقم الداتابيز لنص ومطابقته بدقة
+    let player = playersData.find(p => p.phone && String(p.phone).trim() === phone);
     
     if(player) {
         document.getElementById('renewFormContainer').style.display = 'block';
@@ -115,15 +126,15 @@ function searchPlayerForRenew() {
         document.getElementById('renewCurrentExpiry').innerText = new Date(player.expiryDate).toLocaleDateString('ar-SY');
         document.getElementById('renewPlayerId').value = player.id;
     } else {
-        alert('لم يتم العثور على لاعب بهذا الرقم!');
+        alert('لم يتم العثور على لاعب بهذا الرقم! تأكد من إدخال الرقم بشكل صحيح.');
         document.getElementById('renewFormContainer').style.display = 'none';
     }
 }
 
 document.getElementById('renewForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    let phone = document.getElementById('searchPhoneRenew').value;
-    let player = playersData.find(p => p.phone === phone);
+    let phone = document.getElementById('searchPhoneRenew').value.trim();
+    let player = playersData.find(p => p.phone && String(p.phone).trim() === phone);
     if(!player) return;
 
     let plan = document.getElementById('renewPlanType').value;
@@ -149,7 +160,7 @@ document.getElementById('renewForm').addEventListener('submit', async function(e
         expiryDate: newExpiry.toISOString()
     };
 
-    // 🌟 تحديث اللاعب محلياً فوراً
+    // تحديث اللاعب محلياً فوراً
     let index = playersData.findIndex(x => x.id === player.id);
     if(index !== -1) {
         playersData[index] = data;
@@ -213,7 +224,6 @@ async function syncOfflineData() {
 function renderPlayers(data) {
     let html = '';
     let now = new Date();
-    // عكس المصفوفة لعرض الأحدث أولاً
     data.slice().reverse().forEach(p => {
         let expiry = new Date(p.expiryDate);
         expiry.setHours(23, 59, 59, 999);
@@ -234,7 +244,7 @@ function renderPlayers(data) {
 
 function filterPlayers() {
     let term = document.getElementById('searchInput').value;
-    let filtered = playersData.filter(p => p.name.includes(term) || (p.phone && p.phone.includes(term)));
+    let filtered = playersData.filter(p => p.name.includes(term) || (p.phone && String(p.phone).includes(term)));
     renderPlayers(filtered);
 }
 
